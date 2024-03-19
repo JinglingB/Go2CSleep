@@ -1,0 +1,75 @@
+plugins {
+    alias(libs.plugins.androidApplication)
+}
+
+android {
+    namespace 'big.pimpin.go2sleephoe'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "big.pimpin.go2sleephoe"
+        minSdk 31
+        //noinspection ExpiredTargetSdkVersion
+        targetSdk 31
+        versionCode 1
+        versionName "1.0"
+        resourceConfigurations ['en']
+
+        ndk {
+            //noinspection ChromeOsAbiSupport
+            abiFilters 'armeabi-v7a'
+        }
+        externalNativeBuild {
+            cmake {
+                targets 'libssh2_static', 'go2sleephoe'
+            }
+        }
+    }
+
+    packagingOptions {
+        resources {
+            excludes += [
+                'org/bouncycastle/pqc/crypto/picnic/*',
+                'org/bouncycastle/x509/CertPathReviewerMessages_*.properties',
+            ]
+        }
+    }
+
+    buildFeatures {
+        prefab true
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            externalNativeBuild {
+                cmake {
+                    cFlags += [
+                        '-fvisibility=hidden',
+                        '-fvisibility-inlines-hidden',
+                        '-fno-stack-protector',
+                        '-U_FORTIFY_SOURCE'
+                    ]
+                    arguments += "-DCMAKE_BUILD_TYPE=Release"
+                }
+            }
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    externalNativeBuild {
+        cmake {
+            path file('src/main/c/CMakeLists.txt')
+            version '3.22.1'
+        }
+    }
+}
+
+dependencies {
+    implementation libs.bcprov.jdk18on
+    implementation libs.boringssl
+}
