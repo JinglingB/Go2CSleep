@@ -122,6 +122,7 @@ static int connect_with_timeout(int sockfd, const struct sockaddr *addr, const s
 }
 #pragma clang diagnostic pop
 
+// Largely copied from https://libssh2.org/examples/ssh2_exec.html
 static void waitsocket(libssh2_socket_t socket_fd, LIBSSH2_SESSION *session)
 {
     struct timeval timeout = {
@@ -173,15 +174,16 @@ void JNICALL Java_ssh2_exec(JNIEnv *env, __unused const jobject this, const jstr
     sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (__predict_false(sock == LIBSSH2_INVALID_SOCKET))
         return;
+    fcntl(sock, F_SETFD, FD_CLOEXEC);
     const int opt = 1;
-    setsockopt(sock, IPPROTO_TCP, TCP_QUICKACK, &opt, sizeof(opt));
     setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
+    setsockopt(sock, IPPROTO_TCP, TCP_QUICKACK, &opt, sizeof(opt));
 
     sin.sin_family = AF_INET;
     if (__predict_false(INADDR_NONE == (sin.sin_addr.s_addr = inet_addr(SSH_HOSTNAME))))
         return;
     sin.sin_port = htons(SSH_PORT);
-    if (connect_with_timeout(sock, (struct sockaddr *)(&sin), sizeof(sin), 5000) < 0)
+    if (connect_with_timeout(sock, (struct sockaddr *)&sin, sizeof(sin), 5000) < 0)
         return;
 
     while ((rc = libssh2_session_handshake(session, sock)) == LIBSSH2_ERROR_EAGAIN);
