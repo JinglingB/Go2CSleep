@@ -163,8 +163,8 @@ void JNICALL Java_ssh2_exec(JNIEnv *env, __unused const jobject this, const jstr
     if (__predict_false(session == NULL))
         return;
 
-    const char *const crypt_ciphers = "aes128-gcm@openssh.com,aes256-gcm@openssh.com,aes128-ctr,aes128-cbc,aes192-ctr,aes192-cbc,aes256-ctr,aes256-cbc,rijndael-cbc@lysator.liu.se,arcfour128,arcfour,3des-cbc";
-    libssh2_session_method_pref(session, LIBSSH2_METHOD_HOSTKEY, "ssh-ed25519,ssh-rsa,ssh-dss");
+    const char *const crypt_ciphers = "aes128-gcm@openssh.com,aes256-gcm@openssh.com,aes128-ctr,aes128-cbc,aes192-ctr,aes192-cbc,aes256-ctr,aes256-cbc,rijndael-cbc@lysator.liu.se";
+    libssh2_session_method_pref(session, LIBSSH2_METHOD_HOSTKEY, "ssh-ed25519,ssh-rsa");
     libssh2_session_method_pref(session, LIBSSH2_METHOD_CRYPT_CS, crypt_ciphers);
     libssh2_session_method_pref(session, LIBSSH2_METHOD_CRYPT_SC, crypt_ciphers);
 
@@ -183,7 +183,7 @@ void JNICALL Java_ssh2_exec(JNIEnv *env, __unused const jobject this, const jstr
     if (__predict_false(INADDR_NONE == (sin.sin_addr.s_addr = inet_addr(SSH_HOSTNAME))))
         return;
     sin.sin_port = htons(SSH_PORT);
-    if (connect_with_timeout(sock, (struct sockaddr *)&sin, sizeof(sin), 5000) < 0)
+    if (connect_with_timeout(sock, (const struct sockaddr *)&sin, sizeof(sin), 5000) < 0)
         return;
 
     while ((rc = libssh2_session_handshake(session, sock)) == LIBSSH2_ERROR_EAGAIN);
