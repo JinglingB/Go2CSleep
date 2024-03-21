@@ -34,7 +34,8 @@
 #include <jni.h>
 #include <libssh2.h>
 
-#define	nitems(x) (sizeof((x)) / sizeof((x)[0]))
+static char *g_privkey = NULL;
+static char *g_pubkey = NULL;
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "ConstantParameter"
@@ -146,24 +147,52 @@ static void waitsocket(libssh2_socket_t socket_fd, LIBSSH2_SESSION *session)
     select((int)(socket_fd + 1), readfd, writefd, NULL, &timeout);
 }
 
-void JNICALL Java_ssh2_exec(JNIEnv *env, __unused const jobject this, const jstring Java_commandline, const jstring Java_id_ed25519_path, const jstring Java_id_ed25519_pub_path)
+void JNICALL Java_set_key_paths(JNIEnv *env, __unused const jobject this, const jstring Java_id_ed25519_path, const jstring Java_id_ed25519_pub_path)
+{
+    if (__predict_false(g_privkey != NULL)) {
+        free(g_privkey);
+        g_privkey = NULL;
+    }
+
+    if (__predict_false(g_pubkey != NULL)) {
+        free(g_pubkey);
+        g_pubkey = NULL;
+    }
+
+    if (__predict_true(Java_id_ed25519_path != NULL)){
+        const char *const id_ed25519_path = (*env)->GetStringUTFChars(env, Java_id_ed25519_path, NULL);
+        if (__predict_true(id_ed25519_path != NULL)) {
+            g_privkey = strdup(id_ed25519_path);
+            (*env)->ReleaseStringUTFChars(env, Java_id_ed25519_path, id_ed25519_path);
+        }
+    }
+
+    if (__predict_true(Java_id_ed25519_pub_path != NULL)){
+        const char *const id_ed25519_pub_path = (*env)->GetStringUTFChars(env, Java_id_ed25519_pub_path, NULL);
+        if (__predict_true(id_ed25519_pub_path != NULL)) {
+            g_pubkey = strdup(id_ed25519_pub_path);
+            (*env)->ReleaseStringUTFChars(env, Java_id_ed25519_pub_path, id_ed25519_pub_path);
+        }
+    }
+}
+
+void JNICALL Java_ssh2_exec(JNIEnv *env, __unused const jobject this, const jstring Java_commandline)
 {
     libssh2_socket_t sock;
     struct sockaddr_in sin;
     int rc;
     LIBSSH2_SESSION *session;
     LIBSSH2_CHANNEL *channel = NULL;
+    const char *const crypt_ciphers = "aes128-gcm@openssh.com,aes256-gcm@openssh.com,aes128-ctr,aes128-cbc,aes192-ctr,aes192-cbc,aes256-ctr,aes256-cbc,rijndael-cbc@lysator.liu.se";
 
-    const char *const commandline = (*env)->GetStringUTFChars(env, Java_commandline, NULL);
-    const char *const id_ed25519_path = (*env)->GetStringUTFChars(env, Java_id_ed25519_path, NULL);
-    const char *const id_ed25519_pub_path = (*env)->GetStringUTFChars(env, Java_id_ed25519_pub_path, NULL);
+    if (!g_privkey)
+        return;
 
     /* Create a session instance */
     session = libssh2_session_init();
     if (__predict_false(session == NULL))
         return;
 
-    const char *const crypt_ciphers = "aes128-gcm@openssh.com,aes256-gcm@openssh.com,aes128-ctr,aes128-cbc,aes192-ctr,aes192-cbc,aes256-ctr,aes256-cbc,rijndael-cbc@lysator.liu.se";
     libssh2_session_method_pref(session, LIBSSH2_METHOD_HOSTKEY, "ssh-ed25519,ssh-rsa");
     libssh2_session_method_pref(session, LIBSSH2_METHOD_CRYPT_CS, crypt_ciphers);
     libssh2_session_method_pref(session, LIBSSH2_METHOD_CRYPT_SC, crypt_ciphers);
@@ -191,7 +220,7 @@ void JNICALL Java_ssh2_exec(JNIEnv *env, __unused const jobject this, const jstr
         goto shutdown;
 
     while ((rc = libssh2_userauth_publickey_fromfile(session, SSH_USERNAME,
-                                                     id_ed25519_pub_path, id_ed25519_path,
+                                                     g_pubkey, g_privkey,
                                                      "")) == LIBSSH2_ERROR_EAGAIN);
     if (rc)
         goto shutdown;
@@ -208,8 +237,14 @@ void JNICALL Java_ssh2_exec(JNIEnv *env, __unused const jobject this, const jstr
     if (!channel)
         goto shutdown;
 
+    const char *const commandline = (*env)->GetStringUTFChars(env, Java_commandline, NULL);
+    if (!commandline) {
+        libssh2_session_disconnect(session, NULL);
+        goto shutdown;
+    }
     while (libssh2_channel_exec(channel, commandline) == LIBSSH2_ERROR_EAGAIN)
         waitsocket(sock, session);
+    (*env)->ReleaseStringUTFChars(env, Java_commandline, commandline);
 /*
     if (rc)
         goto shutdown;
@@ -219,10 +254,8 @@ void JNICALL Java_ssh2_exec(JNIEnv *env, __unused const jobject this, const jstr
 */
 
 shutdown:
-    if (channel) {
+    if (channel)
         libssh2_channel_free(channel);
-        //libssh2_session_disconnect(session, NULL);
-    }
 
     libssh2_session_free(session);
 
@@ -242,18 +275,23 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, __unused void *reserved)
     if (__predict_false((*vm)->GetEnv(vm, (void **)&env, JNI_VERSION_1_6) != JNI_OK))
         return JNI_ERR;
 
-    const jclass c = (*env)->FindClass(env, "big/pimpin/go2sleephoe/BaseSshActivity");
-    if (__predict_true(c != NULL)) {
-        static const JNINativeMethod methods[] = {
-            {"ssh2_exec", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V", Java_ssh2_exec},
-        };
-        (*env)->RegisterNatives(env, c, methods, nitems(methods));
-    }
+    static const JNINativeMethod methods[] = {
+        {"set_key_paths", "(Ljava/lang/String;Ljava/lang/String;)V", Java_set_key_paths},
+        {"ssh2_exec", "(Ljava/lang/String;)V", Java_ssh2_exec},
+    };
+
+    jclass c = (*env)->FindClass(env, "big/pimpin/go2sleephoe/MainApplication");
+    if (__predict_true(c != NULL))
+        (*env)->RegisterNatives(env, c, methods, 1);
+    c = (*env)->FindClass(env, "big/pimpin/go2sleephoe/BaseSshActivity");
+    if (__predict_true(c != NULL))
+        (*env)->RegisterNatives(env, c, &methods[1], 1);
 
     return JNI_VERSION_1_6;
 }
 
 JNIEXPORT void JNICALL JNI_OnUnload(__unused JavaVM *vm, __unused void *reserved)
 {
+    Java_set_key_paths(NULL, NULL, NULL, NULL);
     libssh2_exit();
 }

@@ -4,9 +4,12 @@ import android.app.Application;
 
 import java.io.File;
 
+import dalvik.annotation.optimization.FastNative;
+
 public final class MainApplication extends Application {
-    static File privateKeyFile;
-    static File publicKeyFile;
+    static {
+        System.loadLibrary("go2sleephoe");
+    }
 
     /** @noinspection SameParameterValue*/
     private static Class<?> keepMyClassForNamesR8(final String className) throws ClassNotFoundException {
@@ -18,8 +21,8 @@ public final class MainApplication extends Application {
     public void onCreate() {
         super.onCreate();
 
-        privateKeyFile = new File(getFilesDir(), "id_ed25519");
-        publicKeyFile = new File(getExternalFilesDir(null), "id_ed25519.pub");
+        final File privateKeyFile = new File(getFilesDir(), "id_ed25519");
+        final File publicKeyFile = new File(getExternalFilesDir(null), "id_ed25519.pub");
 
         try {
             if (!privateKeyFile.exists() || !publicKeyFile.exists())
@@ -27,5 +30,10 @@ public final class MainApplication extends Application {
         } catch (final Throwable th) {
             throw new RuntimeException(th);
         }
+
+        set_key_paths(privateKeyFile.getAbsolutePath(), publicKeyFile.getAbsolutePath());
     }
+
+    @FastNative
+    private static native void set_key_paths(final String idEd25519Path, final String idEd25519PubPath);
 }
