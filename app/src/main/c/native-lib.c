@@ -152,7 +152,7 @@ void JNICALL Java_ssh2_exec(JNIEnv *env, __unused const jobject this, const jstr
     struct sockaddr_in sin;
     int rc;
     LIBSSH2_SESSION *session;
-    LIBSSH2_CHANNEL *channel;
+    LIBSSH2_CHANNEL *channel = NULL;
 
     const char *const commandline = (*env)->GetStringUTFChars(env, Java_commandline, NULL);
     const char *const id_ed25519_path = (*env)->GetStringUTFChars(env, Java_id_ed25519_path, NULL);
@@ -173,7 +173,7 @@ void JNICALL Java_ssh2_exec(JNIEnv *env, __unused const jobject this, const jstr
 
     sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (__predict_false(sock == LIBSSH2_INVALID_SOCKET))
-        return;
+        goto shutdown;
     fcntl(sock, F_SETFD, FD_CLOEXEC);
     const int opt = 1;
     setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
@@ -181,20 +181,20 @@ void JNICALL Java_ssh2_exec(JNIEnv *env, __unused const jobject this, const jstr
 
     sin.sin_family = AF_INET;
     if (__predict_false(INADDR_NONE == (sin.sin_addr.s_addr = inet_addr(SSH_HOSTNAME))))
-        return;
+        goto shutdown;
     sin.sin_port = htons(SSH_PORT);
     if (connect_with_timeout(sock, (const struct sockaddr *)&sin, sizeof(sin), 5000) < 0)
-        return;
+        goto shutdown;
 
     while ((rc = libssh2_session_handshake(session, sock)) == LIBSSH2_ERROR_EAGAIN);
     if (rc)
-        return;
+        goto shutdown;
 
-    while((rc = libssh2_userauth_publickey_fromfile(session, SSH_USERNAME,
-                                                    id_ed25519_pub_path, id_ed25519_path,
-                                                    "")) == LIBSSH2_ERROR_EAGAIN);
+    while ((rc = libssh2_userauth_publickey_fromfile(session, SSH_USERNAME,
+                                                     id_ed25519_pub_path, id_ed25519_path,
+                                                     "")) == LIBSSH2_ERROR_EAGAIN);
     if (rc)
-        return;
+        goto shutdown;
 
     do
     {
@@ -206,12 +206,30 @@ void JNICALL Java_ssh2_exec(JNIEnv *env, __unused const jobject this, const jstr
         waitsocket(sock, session);
     } while (1);
     if (!channel)
-        return;
+        goto shutdown;
 
-    while ((rc = libssh2_channel_exec(channel, commandline)) == LIBSSH2_ERROR_EAGAIN)
+    while (libssh2_channel_exec(channel, commandline) == LIBSSH2_ERROR_EAGAIN)
         waitsocket(sock, session);
+/*
+    if (rc)
+        goto shutdown;
 
-    // skip cleanup
+    while (libssh2_channel_close(channel) == LIBSSH2_ERROR_EAGAIN)
+        waitsocket(sock, session);
+*/
+
+shutdown:
+    if (channel) {
+        libssh2_channel_free(channel);
+        //libssh2_session_disconnect(session, NULL);
+    }
+
+    libssh2_session_free(session);
+
+    if (sock != LIBSSH2_INVALID_SOCKET) {
+        shutdown(sock, 2);
+        LIBSSH2_SOCKET_CLOSE(sock);
+    }
 }
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, __unused void *reserved)
@@ -233,4 +251,9 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, __unused void *reserved)
     }
 
     return JNI_VERSION_1_6;
+}
+
+JNIEXPORT void JNICALL JNI_OnUnload(__unused JavaVM *vm, __unused void *reserved)
+{
+    libssh2_exit();
 }

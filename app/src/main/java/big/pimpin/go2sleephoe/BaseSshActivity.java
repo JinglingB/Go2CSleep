@@ -21,11 +21,9 @@ abstract class BaseSshActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        //Toast.makeText(this, "Wir suchen dich", Toast.LENGTH_LONG).show();
-
         ssh2_exec(sshCommand, MainApplication.privateKeyFile.getAbsolutePath(), MainApplication.publicKeyFile.getAbsolutePath());
+        //android.widget.Toast.makeText(this, "Wir suchen dich", android.widget.Toast.LENGTH_LONG).show();
         finishAndRemoveTask();
-        System.exit(0);
     }
 
     @FastNative
