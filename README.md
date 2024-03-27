@@ -7,7 +7,7 @@ You'll need the NDK installed.
 
 1. Make sure this repository is recursively cloned: `git clone --recursive https://github.com/JinglingB/Go2CSleep.git`
 
-2. Set your desired hostname and port in ssh_config.h.template and move that to ssh_config.h
+2. Set your desired hostname and port in ssh_config.h.template and save that as ssh_config.h
 
 3. Edit MainActivity.java to set the command that will be executed on the remote PC via SSH
 
@@ -34,10 +34,9 @@ Notes:
     * The stack protector is turned off for the C code
 
     * AES128 is favored over AES256 for encryption
-    
-* There is no disconnection or clean-up performed - this program is intended to exit after the command has been launched and leave the clean-up to the OS
 
-    * Furthermore, because this doesn't stick around, it's very possible your SSH server will terminate the command quickly before it's completed. The remaining code from [ssh2_exec.c](https://libssh2.org/examples/ssh2_exec.html) can be added in order to resolve this.
+* [Deprecated algos](https://github.com/libssh2/libssh2/commit/4bba038eb63dce76e26c01209dab55745e2d4eae) are disabled
+
+* Because this doesn't stick around, it's very possible your SSH server will terminate the started command's process quickly before it's completed. You can uncomment the code in `Java_ssh2_exec()` to wait for termination.
 
 These things are personal preference, but you should be aware of them should you utilize the code. However, changing these things and to use the more-secure defaults is trivial to achieve.
-    
