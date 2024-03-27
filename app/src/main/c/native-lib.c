@@ -34,6 +34,8 @@
 #include <jni.h>
 #include <libssh2.h>
 
+extern void wol();
+
 static char *g_privkey = NULL;
 static char *g_pubkey = NULL;
 
@@ -278,6 +280,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, __unused void *reserved)
     static const JNINativeMethod methods[] = {
         {"set_key_paths", "(Ljava/lang/String;Ljava/lang/String;)V", Java_set_key_paths},
         {"ssh2_exec", "(Ljava/lang/String;)V", Java_ssh2_exec},
+        {"wol", "()V", wol},
     };
 
     jclass c = (*env)->FindClass(env, "big/pimpin/go2sleephoe/MainApplication");
@@ -286,6 +289,11 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, __unused void *reserved)
     c = (*env)->FindClass(env, "big/pimpin/go2sleephoe/BaseSshActivity");
     if (__predict_true(c != NULL))
         (*env)->RegisterNatives(env, c, &methods[1], 1);
+#ifdef WOL_MAC_ADDRESS
+    c = (*env)->FindClass(env, "big/pimpin/go2sleephoe/WolActivity");
+    if (__predict_true(c != NULL))
+        (*env)->RegisterNatives(env, c, &methods[2], 1);
+#endif
 
     return JNI_VERSION_1_6;
 }

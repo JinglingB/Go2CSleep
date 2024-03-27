@@ -39,6 +39,19 @@
             android:theme="@android:style/Theme.Translucent.NoTitleBar">
         </activity>
 
+        <activity
+            android:name=".WolActivity"
+            android:label="Send WOL packet"
+            android:clearTaskOnLaunch="true"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleInstance"
+            android:noHistory="true"
+            android:persistableMode="persistNever"
+            android:stateNotNeeded="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+        </activity>
+
     </application>
 
 </manifest>

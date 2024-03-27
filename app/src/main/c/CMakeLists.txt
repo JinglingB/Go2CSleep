@@ -50,7 +50,8 @@ include_directories(${libssh2_src_DIR}/include ${libssh2_build_DIR}/src)
 # used in the AndroidManifest.xml file.
 add_library(${CMAKE_PROJECT_NAME} SHARED
         # List C/C++ source files with relative paths to this CMakeLists.txt.
-        native-lib.c)
+        native-lib.c
+        wol.c)
 
 # Specifies libraries CMake should link to your target library. You
 # can link libraries from various origins, such as libraries defined in this

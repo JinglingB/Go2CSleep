@@ -19,6 +19,8 @@ You'll need the NDK installed.
 
 7. Run the program again. It should work.
 
+If you want to have Wake-On-LAN functionality, uncomment `WOL_MAC_ADDRESS` in ssh_config.h and launch `.WolActivity` as needed. Uncomment `WOL_BROADCAST_ADDRESS` too if needed.
+
 Notes:
 
 * This is more geared towards connecting via SSH to a computer on the same LAN, `TCP_NODELAY` is set

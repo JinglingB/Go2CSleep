@@ -1,3 +1,10 @@
+#ifndef SSHCONFIG_H
+#define SSHCONFIG_H
+
 #define SSH_HOSTNAME "192.168.1.1"
 #define SSH_PORT 22
 #define SSH_USERNAME "toor"
+//#define WOL_MAC_ADDRESS "XX:XX:XX:XX:XX:XX"
+//#define WOL_BROADCAST_ADDRESS "192.168.1.255"
+
+#endif /*SSHCONFIG_H*/
