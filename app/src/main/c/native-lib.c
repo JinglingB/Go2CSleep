@@ -185,7 +185,7 @@ void JNICALL Java_ssh2_exec(JNIEnv *env, __unused const jobject this, const jstr
     int rc;
     LIBSSH2_SESSION *session;
     LIBSSH2_CHANNEL *channel = NULL;
-    const char *const crypt_ciphers = "aes128-gcm@openssh.com,aes256-gcm@openssh.com,aes128-ctr,aes128-cbc,aes192-ctr,aes192-cbc,aes256-ctr,aes256-cbc,rijndael-cbc@lysator.liu.se";
+    const char *const crypt_ciphers = "aes128-ctr,aes128-cbc,aes128-gcm@openssh.com,aes192-ctr,aes192-cbc,aes256-ctr,aes256-cbc,aes256-gcm@openssh.com,rijndael-cbc@lysator.liu.se";
 
     if (!g_privkey)
         return;
@@ -195,7 +195,7 @@ void JNICALL Java_ssh2_exec(JNIEnv *env, __unused const jobject this, const jstr
     if (__predict_false(session == NULL))
         return;
 
-    libssh2_session_method_pref(session, LIBSSH2_METHOD_HOSTKEY, "ssh-ed25519,ssh-rsa");
+    libssh2_session_method_pref(session, LIBSSH2_METHOD_HOSTKEY, "ssh-ed25519");
     libssh2_session_method_pref(session, LIBSSH2_METHOD_CRYPT_CS, crypt_ciphers);
     libssh2_session_method_pref(session, LIBSSH2_METHOD_CRYPT_SC, crypt_ciphers);
 
